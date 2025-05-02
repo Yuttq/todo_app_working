@@ -1,0 +1,35 @@
+<?php
+require_once '../../includes/config.php';
+require_once '../../includes/functions.php';
+require_once '../../classes/Database.php';
+
+if (!is_logged_in()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized']);
+    exit();
+}
+
+$db = new Database();
+$data = json_decode(file_get_contents('php://input'), true);
+
+$taskId = $data['id'];
+$title = sanitize($data['title']);
+$description = sanitize($data['description']);
+$dueDate = sanitize($data['dueDate']);
+$userId = $_SESSION['user_id'];
+
+// Verify task belongs to user
+$task = $db->fetch("SELECT id FROM tasks WHERE id = ? AND user_id = ?", [$taskId, $userId]);
+
+if (empty($task)) {
+    http_response_code(404);
+    echo json_encode(['error' => 'Task not found']);
+    exit();
+}
+
+$db->query(
+    "UPDATE tasks SET title = ?, description = ?, due_date = ? WHERE id = ?",
+    [$title, $description, $dueDate, $taskId]
+);
+
+echo json_encode(['message' => 'Task updated successfully']);
